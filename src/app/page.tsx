@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   ArrowRight,
@@ -276,236 +277,105 @@ export default function Home() {
             </p>
           )}
 
-          <div className="product-grid">
-            {filteredProducts.length > 0 ? (
-              filteredProducts.map((product) => (
-                <article className="product-card" key={product.id}>
-                  <div className="product-image">
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      fill
-                      sizes="(max-width: 600px) 50vw, (max-width: 900px) 50vw, 25vw"
-                    />
+          
+<div className="product-grid">
+  {filteredProducts.length > 0 ? (
+    filteredProducts.map((product) => (
+      <article className="product-card" key={product.id}>
+        <Link
+          href={`/products/${product.id}`}
+          className="block"
+          aria-label={`View ${product.name}`}
+        >
+          <div className="product-image">
+            <Image
+              src={product.image}
+              alt={product.name}
+              fill
+              sizes="(max-width: 600px) 50vw, (max-width: 900px) 50vw, 25vw"
+            />
 
-                    {product.tag && (
-                      <span className="product-tag">
-                        {product.tag}
-                      </span>
-                    )}
-
-                    <button
-                      className={`wishlist-button ${
-                        wishlist.includes(product.id) ? "selected" : ""
-                      }`}
-                      aria-label="Toggle wishlist"
-                      onClick={() => toggleWishlist(product.id)}
-                    >
-                      <Heart
-                        size={17}
-                        fill={
-                          wishlist.includes(product.id)
-                            ? "currentColor"
-                            : "none"
-                        }
-                      />
-                    </button>
-                  </div>
-
-                  <div className="product-info">
-                    <span className="product-category">
-                      {product.category}
-                    </span>
-
-                    <h3>{product.name}</h3>
-
-                    <div className="product-rating">
-                      ★★★★★ <span>({product.rating})</span>
-                    </div>
-
-                    <div className="product-bottom">
-                      <span className="product-price">
-                        {money(product.price)}
-                      </span>
-
-                      <button
-                        className="add-button"
-                        aria-label={`Add ${product.name} to cart`}
-                        onClick={() => addToCart(product.id)}
-                      >
-                        <Plus size={19} />
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <div className="empty-state">
-                <Search size={30} />
-
-                <h3>No products found</h3>
-
-                <p>
-                  Try another search or select a different category.
-                </p>
-
-                <button
-                  className="primary-button"
-                  onClick={() => {
-                    setSearch("");
-                    setCategory("All");
-                  }}
-                >
-                  Clear search
-                </button>
-              </div>
+            {product.tag && (
+              <span className="product-tag">
+                {product.tag}
+              </span>
             )}
           </div>
-        </section>
-        <section className="section">
-          <div className="trust-strip">
-            <div className="trust-item">
-              <div className="trust-icon">
-                <ShieldCheck />
-              </div>
+        </Link>
 
-              <div>
-                <strong>Shop with confidence</strong>
-                <span>A better shopping experience.</span>
-              </div>
-            </div>
-
-            <div className="trust-item">
-              <div className="trust-icon">
-                <Truck />
-              </div>
-
-              <div>
-                <strong>Convenient shopping</strong>
-                <span>Discover products with ease.</span>
-              </div>
-            </div>
-
-            <div className="trust-item">
-              <div className="trust-icon">
-                <Headphones />
-              </div>
-
-              <div>
-                <strong>Smart assistance</strong>
-                <span>Get help finding products.</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="section" id="about">
-          <div className="ai-banner">
-            <div>
-              <h2>
-                Meet your AI shopping assistant{" "}
-                <Sparkles size={20} />
-              </h2>
-
-              <p>
-                Looking for something specific? Our planned AI shopping
-                assistant will help you discover products and make
-                informed purchasing decisions.
-              </p>
-            </div>
-
-            <button
-              className="primary-button"
-              onClick={() => setShowAI(true)}
-            >
-              <MessageCircle size={17} />
-              Ask TariMart AI
-            </button>
-          </div>
-        </section>
-      </main>
-
-      <footer className="site-footer">
-        <div className="footer-inner">
-          <div>
-            <a href="#" className="brand">
-              <span className="brand-mark">T</span>
-              Tari<span>Mart</span>
-            </a>
-
-            <p>
-              Discover more. Shop smarter. Experience a new way to
-              connect with products and businesses.
-            </p>
-          </div>
-
-          <div>
-            <strong>Explore TariMart</strong>
-            <p>Products · Categories · Smart Shopping</p>
-          </div>
-        </div>
-
-        <div className="footer-bottom">
-          © {new Date().getFullYear()} TariMart AI. All rights reserved.
-          <br />
-          Demo storefront. Product listings and prices are sample data.
-        </div>
-      </footer>
-
-      {showCart && (
-        <div
-          className="modal-backdrop"
-          onClick={() => setShowCart(false)}
+        <button
+          className={`wishlist-button ${
+            wishlist.includes(product.id) ? "selected" : ""
+          }`}
+          aria-label="Toggle wishlist"
+          onClick={() => toggleWishlist(product.id)}
         >
-          <div
-            className="modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-heading">
-              <h2>Your shopping cart</h2>
+          <Heart
+            size={17}
+            fill={
+              wishlist.includes(product.id)
+                ? "currentColor"
+                : "none"
+            }
+          />
+        </button>
 
-              <button
-                className="icon-button"
-                onClick={() => setShowCart(false)}
-                aria-label="Close cart"
-              >
-                <X />
-              </button>
+        <div className="product-info">
+          <Link
+            href={`/products/${product.id}`}
+            className="block"
+          >
+            <span className="product-category">
+              {product.category}
+            </span>
+
+            <h3>{product.name}</h3>
+
+            <div className="product-rating">
+              ★★★★★ <span>({product.rating})</span>
             </div>
 
-            {cartProducts.length === 0 ? (
-              <div className="empty-state">
-                <ShoppingBag size={30} />
-                <p>Your cart is empty.</p>
-              </div>
-            ) : (
-              <>
-                {cartProducts.map((product, index) => (
-                  <div
-                    className="cart-row"
-                    key={`${product.id}-${index}`}
-                  >
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      width={58}
-                      height={58}
-                    />
+            <div className="product-bottom">
+              <span className="product-price">
+                {money(product.price)}
+              </span>
+            </div>
+          </Link>
 
-                    <div>
-                      <strong>{product.name}</strong>
-                      <p>{money(product.price)}</p>
-                    </div>
+          <button
+            className="add-button"
+            aria-label={`Add ${product.name} to cart`}
+            onClick={() => addToCart(product.id)}
+          >
+            <Plus size={19} />
+          </button>
+        </div>
+      </article>
+    ))
+  ) : (
+    <div className="empty-state">
+      <Search size={30} />
 
-                    <button
-                      className="icon-button"
-                      onClick={() => removeFromCart(product.id)}
-                      aria-label="Remove one item"
-                    >
-                      <Minus size={16} />
-                    </button>
-                  </div>
-                ))}
+      <h3>No products found</h3>
+
+      <p>
+        Try another search or select a different category.
+      </p>
+
+      <button
+        className="primary-button"
+        onClick={() => {
+          setSearch("");
+          setCategory("All");
+        }}
+      >
+        Clear search
+      </button>
+    </div>
+  )}
+</div>
+</section>
+
 
                 <div className="cart-total">
                   <strong>Subtotal</strong>
