@@ -17,152 +17,11 @@ import {
   MessageCircle,
 } from "lucide-react";
 
-type Product = {
-  id: number;
-  name: string;
-  category: string;
-  price: number;
-  rating: number;
-  image: string;
-  tag?: string;
-};
-
-const products: Product[] = [
-  {
-    id: 1,
-    name: "Wireless Noise Cancelling Headphones",
-    category: "Electronics",
-    price: 89500,
-    rating: 4.8,
-    image:
-      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=700",
-    tag: "Popular",
-  },
-  {
-    id: 2,
-    name: "Premium Smart Watch",
-    category: "Electronics",
-    price: 67500,
-    rating: 4.7,
-    image:
-      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=700",
-    tag: "Trending",
-  },
-  {
-    id: 3,
-    name: "Modern Leather Sneakers",
-    category: "Fashion",
-    price: 42000,
-    rating: 4.6,
-    image:
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=700",
-  },
-  {
-    id: 4,
-    name: "Minimalist Ladies Handbag",
-    category: "Fashion",
-    price: 38500,
-    rating: 4.9,
-    image:
-      "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=700",
-    tag: "Popular",
-  },
-  {
-    id: 5,
-    name: "Professional Digital Camera",
-    category: "Electronics",
-    price: 285000,
-    rating: 4.8,
-    image:
-      "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=700",
-  },
-  {
-    id: 6,
-    name: "Modern Home Table Lamp",
-    category: "Home & Kitchen",
-    price: 27500,
-    rating: 4.5,
-    image:
-      "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=700",
-  },
-  {
-    id: 7,
-    name: "Luxury Skincare Collection",
-    category: "Beauty",
-    price: 32000,
-    rating: 4.7,
-    image:
-      "https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=700",
-    tag: "New",
-  },
-  {
-    id: 8,
-    name: "Modern Office Chair",
-    category: "Office",
-    price: 112000,
-    rating: 4.6,
-    image:
-      "https://images.unsplash.com/photo-1505843490701-5be5d1b2d4c4?w=700",
-  },
-  {
-    id: 9,
-    name: "Portable Bluetooth Speaker",
-    category: "Electronics",
-    price: 24500,
-    rating: 4.5,
-    image:
-      "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=700",
-  },
-  {
-    id: 10,
-    name: "Classic Wristwatch",
-    category: "Accessories",
-    price: 55000,
-    rating: 4.8,
-    image:
-      "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=700",
-  },
-  {
-    id: 11,
-    name: "Comfortable Living Room Sofa",
-    category: "Home & Kitchen",
-    price: 350000,
-    rating: 4.9,
-    image:
-      "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=700",
-  },
-  {
-    id: 12,
-    name: "Modern Running Shoes",
-    category: "Sports",
-    price: 48000,
-    rating: 4.6,
-    image:
-      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=700",
-  },
-];
-
-const categories = [
-  { name: "Electronics", icon: "🎧" },
-  { name: "Phones & Tablets", icon: "📱" },
-  { name: "Fashion", icon: "👕" },
-  { name: "Beauty", icon: "✨" },
-  { name: "Home & Kitchen", icon: "🏠" },
-  { name: "Computers", icon: "💻" },
-  { name: "Automotive", icon: "🚗" },
-  { name: "Agriculture", icon: "🌱" },
-  { name: "Sports", icon: "⚽" },
-  { name: "Books", icon: "📚" },
-  { name: "Office", icon: "🪑" },
-  { name: "Accessories", icon: "⌚" },
-];
-
-const money = (amount: number) =>
-  new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0,
-  }).format(amount);
+import {
+  products,
+  categories,
+  money,
+} from "../data/products";
 
 export default function Home() {
   const [search, setSearch] = useState("");
@@ -210,7 +69,7 @@ export default function Home() {
 
   const cartProducts = cart
     .map((id) => products.find((product) => product.id === id))
-    .filter((product): product is Product => Boolean(product));
+    .filter((product) => product !== undefined);
 
   const wishlistProducts = products.filter((product) =>
     wishlist.includes(product.id)
@@ -251,8 +110,7 @@ export default function Home() {
   };
 
   return (
-    <>
-      <header className="site-header">
+          <header className="site-header">
         <div className="header-inner">
           <a href="#" className="brand">
             <span className="brand-mark">T</span>
@@ -431,7 +289,9 @@ export default function Home() {
                     />
 
                     {product.tag && (
-                      <span className="product-tag">{product.tag}</span>
+                      <span className="product-tag">
+                        {product.tag}
+                      </span>
                     )}
 
                     <button
@@ -502,7 +362,6 @@ export default function Home() {
             )}
           </div>
         </section>
-
         <section className="section">
           <div className="trust-strip">
             <div className="trust-item">
@@ -661,8 +520,7 @@ export default function Home() {
           </div>
         </div>
       )}
-
-      {showWishlist && (
+          {showWishlist && (
         <div
           className="modal-backdrop"
           onClick={() => setShowWishlist(false)}
@@ -790,4 +648,6 @@ export default function Home() {
       {toast && <div className="toast">{toast}</div>}
     </>
   );
-}
+}   
+
+    
