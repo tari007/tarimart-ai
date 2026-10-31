@@ -622,13 +622,13 @@ export default function Home() {
                 aria-label="Close wishlist"
               >
                 <X />
-              </button>
+</button>
             </div>
 
             {wishlistProducts.length === 0 ? (
               <div className="empty-state">
                 <Heart size={30} />
-                <p>You haven't saved any products yet.</p>
+                <p>You haven&apos;t saved any products yet.</p>
               </div>
             ) : (
               wishlistProducts.map((product) => (
@@ -678,7 +678,7 @@ export default function Home() {
             <div className="ai-message">
               <strong>Hello! 👋</strong>
               <p>
-                I'm TariMart AI. In a future phase, I'll help you
+                I&apos;m TariMart AI. In a future phase, I&apos;ll help you
                 compare products, discover recommendations and make
                 smarter shopping decisions.
               </p>
