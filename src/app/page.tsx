@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import {
   ArrowRight,
@@ -33,7 +34,8 @@ const products: Product[] = [
     category: "Electronics",
     price: 89500,
     rating: 4.8,
-    image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=700",
+    image:
+      "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=700",
     tag: "Popular",
   },
   {
@@ -42,7 +44,8 @@ const products: Product[] = [
     category: "Electronics",
     price: 67500,
     rating: 4.7,
-    image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=700",
+    image:
+      "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=700",
     tag: "Trending",
   },
   {
@@ -51,7 +54,8 @@ const products: Product[] = [
     category: "Fashion",
     price: 42000,
     rating: 4.6,
-    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=700",
+    image:
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=700",
   },
   {
     id: 4,
@@ -59,7 +63,8 @@ const products: Product[] = [
     category: "Fashion",
     price: 38500,
     rating: 4.9,
-    image: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=700",
+    image:
+      "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=700",
     tag: "Popular",
   },
   {
@@ -68,7 +73,8 @@ const products: Product[] = [
     category: "Electronics",
     price: 285000,
     rating: 4.8,
-    image: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=700",
+    image:
+      "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=700",
   },
   {
     id: 6,
@@ -76,7 +82,8 @@ const products: Product[] = [
     category: "Home & Kitchen",
     price: 27500,
     rating: 4.5,
-    image: "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=700",
+    image:
+      "https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=700",
   },
   {
     id: 7,
@@ -84,7 +91,8 @@ const products: Product[] = [
     category: "Beauty",
     price: 32000,
     rating: 4.7,
-    image: "https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=700",
+    image:
+      "https://images.unsplash.com/photo-1608248543803-ba4f8c70ae0b?w=700",
     tag: "New",
   },
   {
@@ -93,7 +101,8 @@ const products: Product[] = [
     category: "Office",
     price: 112000,
     rating: 4.6,
-    image: "https://images.unsplash.com/photo-1505843490701-5be5d1b2d4c4?w=700",
+    image:
+      "https://images.unsplash.com/photo-1505843490701-5be5d1b2d4c4?w=700",
   },
   {
     id: 9,
@@ -101,7 +110,8 @@ const products: Product[] = [
     category: "Electronics",
     price: 24500,
     rating: 4.5,
-    image: "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=700",
+    image:
+      "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=700",
   },
   {
     id: 10,
@@ -109,7 +119,8 @@ const products: Product[] = [
     category: "Accessories",
     price: 55000,
     rating: 4.8,
-    image: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=700",
+    image:
+      "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=700",
   },
   {
     id: 11,
@@ -117,7 +128,8 @@ const products: Product[] = [
     category: "Home & Kitchen",
     price: 350000,
     rating: 4.9,
-    image: "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=700",
+    image:
+      "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=700",
   },
   {
     id: 12,
@@ -125,7 +137,8 @@ const products: Product[] = [
     category: "Sports",
     price: 48000,
     rating: 4.6,
-    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=700",
+    image:
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=700",
   },
 ];
 
@@ -228,14 +241,17 @@ export default function Home() {
   const removeFromCart = (id: number) => {
     setCart((current) => {
       const index = current.indexOf(id);
-      if (index === -1) return current;
+
+      if (index === -1) {
+        return current;
+      }
 
       return current.filter((_, i) => i !== index);
     });
   };
 
   return (
-<>
+    <>
       <header className="site-header">
         <div className="header-inner">
           <a href="#" className="brand">
@@ -257,6 +273,7 @@ export default function Home() {
               onClick={() => setShowWishlist(true)}
             >
               <Heart size={19} />
+
               {wishlist.length > 0 && (
                 <span className="count">{wishlist.length}</span>
               )}
@@ -268,6 +285,7 @@ export default function Home() {
               onClick={() => setShowCart(true)}
             >
               <ShoppingBag size={19} />
+
               {cart.length > 0 && (
                 <span className="count">{cart.length}</span>
               )}
@@ -309,6 +327,7 @@ export default function Home() {
               <h2>Explore categories</h2>
               <p>Find everything you need in one place.</p>
             </div>
+
             <a href="#products" className="text-link">
               Explore all →
             </a>
@@ -323,6 +342,7 @@ export default function Home() {
                 }`}
                 onClick={() => {
                   setCategory(item.name);
+
                   document
                     .getElementById("products")
                     ?.scrollIntoView({ behavior: "smooth" });
@@ -339,7 +359,9 @@ export default function Home() {
           <div className="section-heading">
             <div>
               <h2>Discover products</h2>
-              <p>Explore products selected for your shopping experience.</p>
+              <p>
+                Explore products selected for your shopping experience.
+              </p>
             </div>
 
             <button
@@ -356,6 +378,7 @@ export default function Home() {
           <div className="search-row">
             <div className="search-box">
               <Search size={19} color="#718078" />
+
               <input
                 type="search"
                 placeholder="Search products, categories..."
@@ -378,7 +401,13 @@ export default function Home() {
           </div>
 
           {category !== "All" && (
-            <p style={{ fontSize: 13, color: "#718078", marginBottom: 18 }}>
+            <p
+              style={{
+                fontSize: 13,
+                color: "#718078",
+                marginBottom: 18,
+              }}
+            >
               Showing: <strong>{category}</strong>{" "}
               <button
                 className="text-link"
@@ -394,10 +423,11 @@ export default function Home() {
               filteredProducts.map((product) => (
                 <article className="product-card" key={product.id}>
                   <div className="product-image">
-                    <img
+                    <Image
                       src={product.image}
                       alt={product.name}
-                      loading="lazy"
+                      fill
+                      sizes="(max-width: 600px) 50vw, (max-width: 900px) 50vw, 25vw"
                     />
 
                     {product.tag && (
@@ -452,8 +482,13 @@ export default function Home() {
             ) : (
               <div className="empty-state">
                 <Search size={30} />
+
                 <h3>No products found</h3>
-                <p>Try another search or select a different category.</p>
+
+                <p>
+                  Try another search or select a different category.
+                </p>
+
                 <button
                   className="primary-button"
                   onClick={() => {
@@ -467,12 +502,14 @@ export default function Home() {
             )}
           </div>
         </section>
-                <section className="section">
+
+        <section className="section">
           <div className="trust-strip">
             <div className="trust-item">
               <div className="trust-icon">
                 <ShieldCheck />
               </div>
+
               <div>
                 <strong>Shop with confidence</strong>
                 <span>A better shopping experience.</span>
@@ -483,6 +520,7 @@ export default function Home() {
               <div className="trust-icon">
                 <Truck />
               </div>
+
               <div>
                 <strong>Convenient shopping</strong>
                 <span>Discover products with ease.</span>
@@ -493,6 +531,7 @@ export default function Home() {
               <div className="trust-icon">
                 <Headphones />
               </div>
+
               <div>
                 <strong>Smart assistance</strong>
                 <span>Get help finding products.</span>
@@ -505,8 +544,10 @@ export default function Home() {
           <div className="ai-banner">
             <div>
               <h2>
-                Meet your AI shopping assistant <Sparkles size={20} />
+                Meet your AI shopping assistant{" "}
+                <Sparkles size={20} />
               </h2>
+
               <p>
                 Looking for something specific? Our planned AI shopping
                 assistant will help you discover products and make
@@ -532,6 +573,7 @@ export default function Home() {
               <span className="brand-mark">T</span>
               Tari<span>Mart</span>
             </a>
+
             <p>
               Discover more. Shop smarter. Experience a new way to
               connect with products and businesses.
@@ -552,13 +594,17 @@ export default function Home() {
       </footer>
 
       {showCart && (
-        <div className="modal-backdrop" onClick={() => setShowCart(false)}>
+        <div
+          className="modal-backdrop"
+          onClick={() => setShowCart(false)}
+        >
           <div
             className="modal"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-heading">
               <h2>Your shopping cart</h2>
+
               <button
                 className="icon-button"
                 onClick={() => setShowCart(false)}
@@ -576,12 +622,22 @@ export default function Home() {
             ) : (
               <>
                 {cartProducts.map((product, index) => (
-                  <div className="cart-row" key={`${product.id}-${index}`}>
-                    <img src={product.image} alt={product.name} />
+                  <div
+                    className="cart-row"
+                    key={`${product.id}-${index}`}
+                  >
+                    <Image
+                      src={product.image}
+                      alt={product.name}
+                      width={58}
+                      height={58}
+                    />
+
                     <div>
                       <strong>{product.name}</strong>
                       <p>{money(product.price)}</p>
                     </div>
+
                     <button
                       className="icon-button"
                       onClick={() => removeFromCart(product.id)}
@@ -605,7 +661,8 @@ export default function Home() {
           </div>
         </div>
       )}
-            {showWishlist && (
+
+      {showWishlist && (
         <div
           className="modal-backdrop"
           onClick={() => setShowWishlist(false)}
@@ -616,13 +673,14 @@ export default function Home() {
           >
             <div className="modal-heading">
               <h2>Your wishlist</h2>
+
               <button
                 className="icon-button"
                 onClick={() => setShowWishlist(false)}
                 aria-label="Close wishlist"
               >
                 <X />
-</button>
+              </button>
             </div>
 
             {wishlistProducts.length === 0 ? (
@@ -633,11 +691,18 @@ export default function Home() {
             ) : (
               wishlistProducts.map((product) => (
                 <div className="cart-row" key={product.id}>
-                  <img src={product.image} alt={product.name} />
+                  <Image
+                    src={product.image}
+                    alt={product.name}
+                    width={58}
+                    height={58}
+                  />
+
                   <div>
                     <strong>{product.name}</strong>
                     <p>{money(product.price)}</p>
                   </div>
+
                   <button
                     className="add-button"
                     onClick={() => addToCart(product.id)}
@@ -653,7 +718,10 @@ export default function Home() {
       )}
 
       {showAI && (
-        <div className="modal-backdrop" onClick={() => setShowAI(false)}>
+        <div
+          className="modal-backdrop"
+          onClick={() => setShowAI(false)}
+        >
           <div
             className="modal ai-modal"
             onClick={(e) => e.stopPropagation()}
@@ -663,6 +731,7 @@ export default function Home() {
                 <h2>
                   <Sparkles size={20} /> TariMart AI
                 </h2>
+
                 <p>Your smart shopping companion.</p>
               </div>
 
@@ -677,11 +746,13 @@ export default function Home() {
 
             <div className="ai-message">
               <strong>Hello! 👋</strong>
+
               <p>
-                I&apos;m TariMart AI. In a future phase, I&apos;ll help you
-                compare products, discover recommendations and make
+                I&apos;m TariMart AI. In a future phase, I&apos;ll help
+                you compare products, discover recommendations and make
                 smarter shopping decisions.
               </p>
+
               <span>AI assistant interface preview</span>
             </div>
 
@@ -689,8 +760,11 @@ export default function Home() {
               className="ai-input"
               onSubmit={(e) => {
                 e.preventDefault();
+
                 if (aiMessage.trim()) {
-                  notify("AI integration is coming in a later phase.");
+                  notify(
+                    "AI integration is coming in a later phase."
+                  );
                   setAiMessage("");
                 }
               }}
@@ -700,6 +774,7 @@ export default function Home() {
                 value={aiMessage}
                 onChange={(e) => setAiMessage(e.target.value)}
               />
+
               <button
                 className="primary-button"
                 type="submit"
