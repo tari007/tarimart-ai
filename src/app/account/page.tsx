@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useState } from "react";
@@ -12,14 +13,25 @@ import {
   ShoppingBag,
   Settings,
   Loader2,
+  Save,
+  CheckCircle,
+  AlertCircle,
 } from "lucide-react";
-import { supabase } from "../../lib/supabase";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { supabase } from "../../lib/supabase";
 
 export default function AccountPage() {
   const router = useRouter();
+
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [user, setUser] = useState<SupabaseUser | null>(null);
+
+  const [fullName, setFullName] = useState("");
+  const [phone, setPhone] = useState("");
+
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     async function loadAccount() {
@@ -33,6 +45,25 @@ export default function AccountPage() {
       }
 
       setUser(user);
+
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("full_name, phone")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (error) {
+        setErrorMessage("Unable to load your profile.");
+      }
+
+      setFullName(
+        profile?.full_name ||
+        user.user_metadata?.full_name ||
+        ""
+      );
+
+      setPhone(profile?.phone || "");
+
       setLoading(false);
     }
 
@@ -51,6 +82,48 @@ export default function AccountPage() {
     return () => subscription.unsubscribe();
   }, [router]);
 
+  async function handleSaveProfile(
+    event: React.FormEvent<HTMLFormElement>
+  ) {
+    event.preventDefault();
+
+    if (!user) return;
+
+    setSaving(true);
+    setSuccessMessage("");
+    setErrorMessage("");
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({
+        full_name: fullName.trim(),
+        phone: phone.trim(),
+      })
+      .eq("id", user.id);
+
+    if (error) {
+      setErrorMessage(
+        "Your profile could not be updated. Please try again."
+      );
+      setSaving(false);
+      return;
+    }
+
+    const { error: metadataError } = await supabase.auth.updateUser({
+      data: { full_name: fullName.trim() },
+    });
+
+    if (metadataError) {
+      setErrorMessage(
+        "Your profile was saved, but your account display name could not be synchronised."
+      );
+    } else {
+      setSuccessMessage("Your profile has been updated successfully.");
+    }
+
+    setSaving(false);
+  }
+
   async function handleSignOut() {
     await supabase.auth.signOut();
     router.replace("/login");
@@ -64,9 +137,6 @@ export default function AccountPage() {
       </div>
     );
   }
-
-  const fullName =
-    user?.user_metadata?.full_name || "Customer";
 
   const menuItems = [
     {
@@ -125,7 +195,7 @@ export default function AccountPage() {
               </p>
 
               <h1 className="text-2xl font-bold text-gray-900 mt-1">
-                {fullName}
+                {fullName || "Customer"}
               </h1>
 
               <p className="text-sm text-gray-500 mt-1">
@@ -143,10 +213,99 @@ export default function AccountPage() {
           </div>
         </div>
 
+        <div className="bg-white border rounded-2xl p-6 md:p-8 mb-8">
+          <div className="mb-6">
+            <h2 className="text-xl font-bold text-gray-900">
+              Personal Information
+            </h2>
+
+            <p className="text-sm text-gray-500 mt-1">
+              Update your TariMart customer profile.
+            </p>
+          </div>
+
+          {successMessage && (
+            <div className="flex items-center gap-2 bg-green-50 text-green-700 border border-green-200 rounded-lg p-3 mb-5 text-sm">
+              <CheckCircle className="w-5 h-5 shrink-0" />
+              {successMessage}
+            </div>
+          )}
+
+          {errorMessage && (
+            <div className="flex items-center gap-2 bg-red-50 text-red-700 border border-red-200 rounded-lg p-3 mb-5 text-sm">
+              <AlertCircle className="w-5 h-5 shrink-0" />
+              {errorMessage}
+            </div>
+          )}
+
+          <form onSubmit={handleSaveProfile} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Full Name
+              </label>
+
+              <input
+                type="text"
+                value={fullName}
+                onChange={(event) => setFullName(event.target.value)}
+                required
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                placeholder="Enter your full name"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Email Address
+              </label>
+
+              <input
+                type="email"
+                value={user?.email || ""}
+                readOnly
+                className="w-full border border-gray-200 rounded-lg px-4 py-3 bg-gray-100 text-gray-500"
+              />
+
+              <p className="text-xs text-gray-400 mt-2">
+                Your registered email address.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Phone Number
+              </label>
+
+              <input
+                type="tel"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 text-gray-900 outline-none focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                placeholder="Enter your phone number"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex items-center justify-center gap-2 bg-orange-600 text-white rounded-lg px-6 py-3 font-semibold hover:bg-orange-700 disabled:opacity-60"
+            >
+              {saving ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Save className="w-5 h-5" />
+              )}
+
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+          </form>
+        </div>
+
         <div className="mb-6">
           <h2 className="text-xl font-bold text-gray-900">
             My Account
           </h2>
+
           <p className="text-sm text-gray-500 mt-1">
             Manage your TariMart shopping experience.
           </p>
