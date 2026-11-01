@@ -82,47 +82,53 @@ export default function AccountPage() {
     return () => subscription.unsubscribe();
   }, [router]);
 
-  async function handleSaveProfile(
-    event: React.FormEvent<HTMLFormElement>
-  ) {
-    event.preventDefault();
+  
+async function handleSaveProfile(
+  event: React.FormEvent<HTMLFormElement>
+) {
+  event.preventDefault();
 
-    if (!user) return;
+  if (!user) return;
 
-    setSaving(true);
-    setSuccessMessage("");
-    setErrorMessage("");
+  setSaving(true);
+  setSuccessMessage("");
+  setErrorMessage("");
 
-    const { error } = await supabase
-      .from("profiles")
-      .update({
+  const { data, error } = await supabase
+    .from("profiles")
+    .upsert(
+      {
+        id: user.id,
         full_name: fullName.trim(),
+        email: user.email ?? "",
         phone: phone.trim(),
-      })
-      .eq("id", user.id);
+      },
+      { onConflict: "id" }
+    )
+    .select()
+    .single();
 
-    if (error) {
-      setErrorMessage(
-        "Your profile could not be updated. Please try again."
-      );
-      setSaving(false);
-      return;
-    }
-
-    const { error: metadataError } = await supabase.auth.updateUser({
-      data: { full_name: fullName.trim() },
-    });
-
-    if (metadataError) {
-      setErrorMessage(
-        "Your profile was saved, but your account display name could not be synchronised."
-      );
-    } else {
-      setSuccessMessage("Your profile has been updated successfully.");
-    }
-
+  if (error) {
+    console.error("Profile update error:", error);
+    setErrorMessage(`Profile update failed: ${error.message}`);
     setSaving(false);
+    return;
   }
+
+  const { error: metadataError } = await supabase.auth.updateUser({
+    data: { full_name: fullName.trim() },
+  });
+
+  if (metadataError) {
+    setErrorMessage(
+      `Profile saved, but account name sync failed: ${metadataError.message}`
+    );
+  } else {
+    setSuccessMessage("Your profile has been updated successfully.");
+  }
+
+  setSaving(false);
+}
 
   async function handleSignOut() {
     await supabase.auth.signOut();
