@@ -14,11 +14,12 @@ import {
   Loader2,
 } from "lucide-react";
 import { supabase } from "../../lib/supabase";
+import type { User } from "@supabase/supabase-js";
 
 export default function AccountPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     async function loadAccount() {
