@@ -127,6 +127,34 @@ export default function Home() {
           </nav>
 
           <div className="header-actions">
+  <a
+    href="/login"
+    style={{
+      textDecoration: "none",
+      color: "#333333",
+      fontWeight: 600,
+      fontSize: "14px",
+      whiteSpace: "nowrap",
+    }}
+  >
+    Sign In
+  </a>
+
+  <a
+    href="/register"
+    style={{
+      textDecoration: "none",
+      backgroundColor: "#ea580c",
+      color: "#ffffff",
+      padding: "10px 14px",
+      borderRadius: "8px",
+      fontWeight: 600,
+      fontSize: "14px",
+      whiteSpace: "nowrap",
+    }}
+  >
+    Create Account
+  </a>
             <button
               className="icon-button"
               aria-label="Open wishlist"
