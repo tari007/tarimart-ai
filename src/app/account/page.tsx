@@ -173,9 +173,6 @@ async function handleSaveProfile(
 
   return (
     <main className="min-h-screen bg-gray-50">
-      <div className="bg-yellow-100 text-black p-3 text-sm text-center">
-  Connected Supabase project: {process.env.NEXT_PUBLIC_SUPABASE_URL}
-</div>
       <header className="bg-white border-b">
         <div className="max-w-6xl mx-auto px-5 py-5 flex items-center justify-between">
           <Link href="/" className="text-2xl font-bold text-orange-600">
