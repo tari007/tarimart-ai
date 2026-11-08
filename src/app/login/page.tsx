@@ -1,10 +1,18 @@
-
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, LockKeyhole, Mail } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  LockKeyhole,
+  Mail,
+  CheckCircle2,
+  ShoppingBag,
+  ArrowRight,
+  Loader2,
+} from "lucide-react";
 import { supabase } from "../../lib/supabase";
 
 export default function LoginPage() {
@@ -16,6 +24,25 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [countdown, setCountdown] = useState(3);
+  const [customerName, setCustomerName] = useState("there");
+
+  useEffect(() => {
+    if (!showSuccessModal) return;
+
+    if (countdown <= 0) {
+      router.replace("/account");
+      router.refresh();
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setCountdown((current) => current - 1);
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [showSuccessModal, countdown, router]);
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -25,20 +52,22 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const { error: loginError } =
+      const { data, error: loginError } =
         await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
         });
 
-      if (loginError) {
-        throw loginError;
-      }
+      if (loginError) throw loginError;
 
-      setSuccess("Login successful. Redirecting...");
+      const name =
+        data.user?.user_metadata?.full_name ||
+        data.user?.email?.split("@")[0] ||
+        "there";
 
-      router.push("/account");
-      router.refresh();
+      setCustomerName(name);
+      setCountdown(3);
+      setShowSuccessModal(true);
     } catch (err: unknown) {
       setError(
         err instanceof Error
@@ -70,9 +99,7 @@ export default function LoginPage() {
           }
         );
 
-      if (resetError) {
-        throw resetError;
-      }
+      if (resetError) throw resetError;
 
       setSuccess(
         "If an account exists for this email, a password reset link will be sent."
@@ -108,7 +135,6 @@ export default function LoginPage() {
         </p>
 
         <form onSubmit={handleLogin} className="space-y-5">
-
           <div>
             <label
               htmlFor="email"
@@ -208,11 +234,17 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-lg bg-green-600 px-4 py-3 font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-3 font-semibold text-white transition hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Signing in..." : "Sign in"}
+            {loading ? (
+              <>
+                <Loader2 size={19} className="animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              "Sign in"
+            )}
           </button>
-
         </form>
 
         <div className="my-6 flex items-center gap-3">
@@ -233,8 +265,61 @@ export default function LoginPage() {
             ← Back to shopping
           </Link>
         </p>
-
       </div>
+
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/50 px-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="login-success-title"
+            className="w-full max-w-sm animate-[modalPop_0.35s_ease-out] overflow-hidden rounded-3xl bg-white p-7 text-center shadow-2xl"
+          >
+            <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full bg-green-50">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
+                <CheckCircle2
+                  size={38}
+                  className="text-green-600"
+                />
+              </div>
+            </div>
+
+            <span className="mb-2 inline-block rounded-full bg-green-50 px-3 py-1 text-xs font-bold uppercase tracking-wider text-green-700">
+              Login successful
+            </span>
+
+            <h2
+              id="login-success-title"
+              className="mb-2 text-2xl font-bold text-gray-900"
+            >
+              Welcome back!
+            </h2>
+
+            <p className="mb-6 text-sm leading-6 text-gray-500">
+              Hello, <span className="font-semibold text-gray-800">{customerName}</span>!
+              You're signed in. Your TariMart shopping experience awaits.
+            </p>
+
+            <div className="mb-5 flex items-center justify-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800">
+              <ShoppingBag size={18} />
+              <span>Great to have you back!</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => router.replace("/account")}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3.5 font-semibold text-white transition hover:bg-green-700"
+            >
+              Continue to my account
+              <ArrowRight size={18} />
+            </button>
+
+            <p className="mt-4 text-xs text-gray-400">
+              Redirecting automatically in {countdown} seconds...
+            </p>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
