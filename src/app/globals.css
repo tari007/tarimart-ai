@@ -909,3 +909,141 @@ a {
     border-radius: 18px;
   }
 }
+
+/* TariMart shopping cart and wishlist modal */
+.side-modal {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  max-height: 85vh;
+  margin: auto;
+  padding: 24px;
+  overflow: hidden;
+  border-radius: 22px;
+  background: #ffffff;
+  color: #17211d;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
+}
+
+.side-modal .modal-heading {
+  flex-shrink: 0;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e8eeea;
+}
+
+.side-modal .modal-items {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.side-modal .cart-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 16px 0;
+  border-bottom: 1px solid #e8eeea;
+}
+
+.side-modal .cart-item > img {
+  flex: 0 0 76px;
+  width: 76px;
+  height: 76px;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.side-modal .cart-item-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  gap: 7px;
+}
+
+.side-modal .cart-item-info > strong {
+  color: #17211d;
+  font-size: 14px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.side-modal .cart-item-info > span {
+  color: #087f5b;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.side-modal .wishlist-item-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 5px;
+}
+
+.side-modal .remove-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 5px 9px;
+  border: 1px solid #e8eeea;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #526159;
+  font-size: 12px;
+}
+
+.side-modal .remove-button:hover {
+  border-color: #087f5b;
+  color: #087f5b;
+}
+
+.side-modal .cart-total {
+  flex-shrink: 0;
+  margin-top: 16px;
+  padding: 17px 0;
+  border-top: 1px solid #e8eeea;
+  font-size: 16px;
+}
+
+.side-modal .cart-note {
+  flex-shrink: 0;
+  margin: 5px 0;
+  color: #718078;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.side-modal .cart-note a {
+  color: #087f5b;
+  font-weight: 700;
+}
+
+.side-modal .checkout-button {
+  flex-shrink: 0;
+  width: 100%;
+  margin-top: 16px;
+}
+
+@media (max-width: 600px) {
+  .side-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 85vh;
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .side-modal .cart-item > img {
+    flex-basis: 64px;
+    width: 64px;
+    height: 64px;
+  }
+}
