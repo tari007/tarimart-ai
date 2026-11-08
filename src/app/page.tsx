@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   Heart,
@@ -23,6 +23,7 @@ import {
   categories,
   money,
 } from "../data/products";
+import { supabase } from "../lib/supabase";
 
 export default function Home() {
   const [search, setSearch] = useState("");
