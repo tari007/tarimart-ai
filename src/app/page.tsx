@@ -323,34 +323,54 @@ export default function Home() {
           </nav>
 
           <div className="header-actions">
-            <a
-              href="/login"
-              style={{
-                textDecoration: "none",
-                color: "#333333",
-                fontWeight: 600,
-                fontSize: "14px",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Sign In
-            </a>
+            {userId ? (
+              <Link
+                href="/account"
+                style={{
+                  textDecoration: "none",
+                  backgroundColor: "#087f5b",
+                  color: "#ffffff",
+                  padding: "10px 14px",
+                  borderRadius: "8px",
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                My Account
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  style={{
+                    textDecoration: "none",
+                    color: "#333333",
+                    fontWeight: 600,
+                    fontSize: "14px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Sign In
+                </Link>
 
-            <a
-              href="/register"
-              style={{
-                textDecoration: "none",
-                backgroundColor: "#ea580c",
-                color: "#ffffff",
-                padding: "10px 14px",
-                borderRadius: "8px",
-                fontWeight: 600,
-                fontSize: "14px",
-                whiteSpace: "nowrap",
-              }}
-            >
-              Create Account
-            </a>
+                <Link
+                  href="/register"
+                  style={{
+                    textDecoration: "none",
+                    backgroundColor: "#ea580c",
+                    color: "#ffffff",
+                    padding: "10px 14px",
+                    borderRadius: "8px",
+                    fontWeight: 600,
+                    fontSize: "14px",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Create Account
+                </Link>
+              </>
+            )}
 
             <button
               className="icon-button"
@@ -579,7 +599,7 @@ export default function Home() {
             </div>
           )}
         </section>
-
+        
         <section className="trust-strip">
           <div className="trust-item">
             <Truck size={25} />
@@ -659,7 +679,7 @@ export default function Home() {
           </p>
         </div>
       </footer>
-      
+
       {showCart && (
         <div
           className="modal-backdrop"
@@ -956,7 +976,6 @@ export default function Home() {
     </>
   );
 }
+
+
       
-
-
-    
