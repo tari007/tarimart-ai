@@ -297,7 +297,7 @@ export default function LoginPage() {
 
             <p className="mb-6 text-sm leading-6 text-gray-500">
               Hello, <span className="font-semibold text-gray-800">{customerName}</span>!
-              You're signed in. Your TariMart shopping experience awaits.
+              You&apos;re signed in. Your TariMart shopping experience awaits.
             </p>
 
             <div className="mb-5 flex items-center justify-center gap-2 rounded-xl bg-green-50 p-3 text-sm text-green-800">
