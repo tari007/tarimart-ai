@@ -493,7 +493,7 @@ export default function CheckoutPage() {
                         </p>
 
                         <p className="text-xs text-gray-500">
-                          Pay through your bank's USSD service
+                          Your bank&apos;s USSD service
                         </p>
                       </div>
 
