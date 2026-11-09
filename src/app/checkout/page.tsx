@@ -67,10 +67,11 @@ export default function CheckoutPage() {
             ""
         );
 
-        const { data: cartItems, error: cartError } = await supabase
-          .from("cart_items")
-          .select("product_id, quantity")
-          .eq("user_id", user.id);
+        const { data: cartItems, error: cartError } =
+          await supabase
+            .from("cart_items")
+            .select("product_id, quantity")
+            .eq("user_id", user.id);
 
         if (cartError) {
           throw cartError;
@@ -117,9 +118,13 @@ export default function CheckoutPage() {
   const shipping = subtotal > 0 ? 2500 : 0;
   const total = subtotal + shipping;
 
-  function handleCheckout(event: FormEvent<HTMLFormElement>) {
+  async function handleCheckout(
+    event: FormEvent<HTMLFormElement>
+  ) {
     event.preventDefault();
     setMessage("");
+
+    if (checking) return;
 
     if (orderItems.length === 0) {
       setMessage(
@@ -141,13 +146,102 @@ export default function CheckoutPage() {
 
     setChecking(true);
 
-    setMessage(
-      "Your delivery details are complete. Payment processing will be connected in the next step. No payment has been made."
-    );
+    let orderId: string | null = null;
 
-    setChecking(false);
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        router.replace("/login");
+        return;
+      }
+
+      const orderNumber = `TM-${Date.now()}`;
+
+      const { data: order, error: orderError } =
+        await supabase
+          .from("orders")
+          .insert({
+            user_id: user.id,
+            order_number: orderNumber,
+            customer_name: customerName.trim(),
+            customer_email: userEmail,
+            phone: phone.trim(),
+            delivery_address: address.trim(),
+            city: city.trim(),
+            state: state.trim(),
+            subtotal,
+            shipping_fee: shipping,
+            total,
+            payment_provider: provider,
+            payment_method: paymentMethod,
+            payment_status: "demo_paid",
+            order_status: "processing",
+          })
+          .select("id")
+          .single();
+
+      if (orderError) {
+        throw orderError;
+      }
+
+      orderId = order.id;
+
+      const itemsToSave = orderItems.map((item) => ({
+        order_id: order.id,
+        product_id: String(item.id),
+        product_name: item.name,
+        unit_price: item.price,
+        quantity: item.quantity,
+        line_total: item.lineTotal,
+      }));
+
+      const { error: itemsError } = await supabase
+        .from("order_items")
+        .insert(itemsToSave);
+
+      if (itemsError) {
+        throw itemsError;
+      }
+
+      const { error: cartError } = await supabase
+        .from("cart_items")
+        .delete()
+        .eq("user_id", user.id);
+
+      if (cartError) {
+        throw cartError;
+      }
+
+      setCart([]);
+
+      router.push(`/order-confirmation/${order.id}`);
+    } catch (error) {
+      console.error("Order creation error:", error);
+
+      if (orderId) {
+        const { error: rollbackError } = await supabase
+          .from("orders")
+          .delete()
+          .eq("id", orderId);
+
+        if (rollbackError) {
+          console.error("Order rollback error:", rollbackError);
+        }
+      }
+
+      setMessage(
+        "We could not complete your order. Your cart has been retained where possible. Please try again."
+      );
+    } finally {
+      setChecking(false);
+    }
   }
-   if (loading) {
+
+  if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -215,7 +309,7 @@ export default function CheckoutPage() {
           <form onSubmit={handleCheckout}>
             <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr]">
               <div className="space-y-7">
-                <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
+                                <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
                   <div className="mb-6 flex items-center gap-3">
                     <div className="rounded-xl bg-green-50 p-3 text-green-700">
                       <Landmark size={22} />
@@ -329,14 +423,15 @@ export default function CheckoutPage() {
                     </div>
                   </div>
                 </section>
-                               <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
+
+                <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
                   <div className="mb-6">
                     <h2 className="text-lg font-bold text-gray-900">
                       Payment provider
                     </h2>
 
                     <p className="mt-1 text-sm text-gray-500">
-                      Choose your preferred secure payment provider.
+                      Select a provider for this checkout demonstration.
                     </p>
                   </div>
 
@@ -364,7 +459,7 @@ export default function CheckoutPage() {
                       </div>
 
                       <p className="mt-2 text-xs text-gray-500">
-                        Secure payments powered by Paystack.
+                        Future payment integration option.
                       </p>
                     </button>
 
@@ -391,7 +486,7 @@ export default function CheckoutPage() {
                       </div>
 
                       <p className="mt-2 text-xs text-gray-500">
-                        Secure payments powered by Flutterwave.
+                        Future payment integration option.
                       </p>
                     </button>
                   </div>
@@ -402,7 +497,7 @@ export default function CheckoutPage() {
                     </h3>
 
                     <p className="mt-1 text-sm text-gray-500">
-                      Available methods depend on provider support and transaction eligibility.
+                      Choose a method for this simulated transaction.
                     </p>
                   </div>
 
@@ -427,7 +522,7 @@ export default function CheckoutPage() {
                         </p>
 
                         <p className="text-xs text-gray-500">
-                          Visa, Mastercard and other supported cards
+                          Card payment simulation
                         </p>
                       </div>
 
@@ -461,7 +556,7 @@ export default function CheckoutPage() {
                         </p>
 
                         <p className="text-xs text-gray-500">
-                          Transfer using the payment instructions provided
+                          Bank transfer simulation
                         </p>
                       </div>
 
@@ -493,7 +588,7 @@ export default function CheckoutPage() {
                         </p>
 
                         <p className="text-xs text-gray-500">
-                          Your bank&apos;s USSD service
+                          USSD payment simulation
                         </p>
                       </div>
 
@@ -506,21 +601,27 @@ export default function CheckoutPage() {
                     </button>
                   </div>
 
-                  <div className="mt-5 flex gap-3 rounded-xl bg-blue-50 p-4 text-sm text-blue-900">
+                  <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                    <strong>DEMO MODE:</strong> This is a simulated checkout.
+                    No real payment will be processed or collected.
+                    Do not enter card details, PINs or banking credentials.
+                  </div>
+
+                  <div className="mt-4 flex gap-3 rounded-xl bg-blue-50 p-4 text-sm text-blue-900">
                     <ShieldCheck
                       className="mt-0.5 shrink-0"
                       size={20}
                     />
 
                     <p>
-                      Your card details and banking credentials will
-                      be handled by the selected payment provider.
-                      TariMart will not store your card PIN or CVV.
+                      Payment provider options are displayed for demonstration
+                      purposes only. Live payment processing has not been
+                      connected.
                     </p>
                   </div>
                 </section>
               </div>
-                           <aside className="h-fit rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7 lg:sticky lg:top-6">
+                            <aside className="h-fit rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7 lg:sticky lg:top-6">
                 <h2 className="mb-6 text-lg font-bold text-gray-900">
                   Order summary
                 </h2>
@@ -596,19 +697,19 @@ export default function CheckoutPage() {
                         className="animate-spin"
                         size={18}
                       />
-                      Checking details...
+                      Processing demo order...
                     </>
                   ) : (
                     <>
-                      Continue to payment setup
+                      Complete demo order
                       <ArrowRight size={18} />
                     </>
                   )}
                 </button>
 
                 <p className="mt-4 text-center text-xs text-gray-500">
-                  By continuing, you agree to our store terms and
-                  conditions.
+                  This checkout is for demonstration purposes.
+                  No real payment will be collected.
                 </p>
               </aside>
             </div>
@@ -618,3 +719,4 @@ export default function CheckoutPage() {
     </main>
   );
 }
+                
