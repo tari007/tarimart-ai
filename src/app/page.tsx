@@ -792,15 +792,15 @@ export default function Home() {
                 </p>
 
                 <button
-                  className="primary-button checkout-button"
-                  onClick={() =>
-                    setShowCart(false);
-                    window.location.href = "/checkout";
-                  }}
-                >
-                  Continue to checkout
-                  <ArrowRight size={17} />
-                </button>
+  className="primary-button checkout-button"
+  onClick={() => {
+    setShowCart(false);
+    window.location.href = "/checkout";
+  }}
+>
+  Continue to checkout
+  <ArrowRight size={17} />
+</button>
               </>
             )}
           </div>
