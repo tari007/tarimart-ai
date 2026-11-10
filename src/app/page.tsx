@@ -794,8 +794,9 @@ export default function Home() {
                 <button
                   className="primary-button checkout-button"
                   onClick={() =>
-                    notify("Checkout will be available in a future update.")
-                  }
+                    setShowCart(false);
+                    window.location.href = "/checkout";
+                  }}
                 >
                   Continue to checkout
                   <ArrowRight size={17} />
