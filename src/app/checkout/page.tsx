@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
@@ -14,12 +15,18 @@ import {
   ShoppingBag,
   Loader2,
 } from "lucide-react";
+
 import { supabase } from "@/lib/supabase";
-import { products, money } from "@/data/products";
+import { money, type Product } from "@/data/products";
 
 type CartItem = {
   product_id: string;
   quantity: number;
+};
+
+type CheckoutItem = Product & {
+  quantity: number;
+  lineTotal: number;
 };
 
 type PaymentProvider = "paystack" | "flutterwave";
@@ -29,7 +36,9 @@ export default function CheckoutPage() {
   const router = useRouter();
 
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [userEmail, setUserEmail] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [phone, setPhone] = useState("");
@@ -47,6 +56,8 @@ export default function CheckoutPage() {
   const [checking, setChecking] = useState(false);
 
   useEffect(() => {
+    let active = true;
+
     async function loadCheckout() {
       try {
         const {
@@ -59,8 +70,9 @@ export default function CheckoutPage() {
           return;
         }
 
-        setUserEmail(user.email ?? "");
+        if (!active) return;
 
+        setUserEmail(user.email ?? "");
         setCustomerName(
           user.user_metadata?.full_name ??
             user.user_metadata?.name ??
@@ -73,30 +85,86 @@ export default function CheckoutPage() {
             .select("product_id, quantity")
             .eq("user_id", user.id);
 
-        if (cartError) {
-          throw cartError;
+        if (cartError) throw cartError;
+
+        if (!active) return;
+
+        const loadedCart: CartItem[] = (cartItems || []).map(
+          (item) => ({
+            product_id: String(item.product_id),
+            quantity: Number(item.quantity),
+          })
+        );
+
+        setCart(loadedCart);
+
+        if (loadedCart.length === 0) {
+          setProducts([]);
+          return;
         }
 
-        setCart(cartItems ?? []);
+        const productIds = loadedCart.map(
+          (item) => item.product_id
+        );
+
+        const { data: productData, error: productError } =
+          await supabase
+            .from("products")
+            .select(
+              "id, name, description, price, category, image, stock, rating, featured, active"
+            )
+            .in("id", productIds)
+            .eq("active", true);
+
+        if (productError) throw productError;
+
+        if (!active) return;
+
+        const loadedProducts: Product[] = (productData || []).map(
+          (item) => ({
+            id: String(item.id),
+            name: item.name,
+            description: item.description || "",
+            price: Number(item.price),
+            category: item.category,
+            image: item.image || "/placeholder.png",
+            stock: Number(item.stock),
+            rating: Number(item.rating ?? 5),
+            featured: Boolean(item.featured),
+            active: Boolean(item.active),
+            tag: item.featured ? "Featured" : undefined,
+          })
+        );
+
+        setProducts(loadedProducts);
+
+        if (loadedProducts.length !== loadedCart.length) {
+          setMessage(
+            "Some products in your cart are no longer available. Please review your order."
+          );
+        }
       } catch (error) {
         console.error("Checkout loading error:", error);
         setMessage(
           "We could not load your cart. Please refresh the page."
         );
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     }
 
-    loadCheckout();
+    void loadCheckout();
+
+    return () => {
+      active = false;
+    };
   }, [router]);
 
-  const orderItems = useMemo(() => {
+  const orderItems = useMemo<CheckoutItem[]>(() => {
     return cart
       .map((item) => {
         const product = products.find(
-          (product) =>
-            String(product.id) === String(item.product_id)
+          (product) => product.id === item.product_id
         );
 
         if (!product) return null;
@@ -107,8 +175,8 @@ export default function CheckoutPage() {
           lineTotal: product.price * item.quantity,
         };
       })
-      .filter((item) => item !== null);
-  }, [cart]);
+      .filter((item): item is CheckoutItem => item !== null);
+  }, [cart, products]);
 
   const subtotal = orderItems.reduce(
     (total, item) => total + item.lineTotal,
@@ -128,7 +196,14 @@ export default function CheckoutPage() {
 
     if (orderItems.length === 0) {
       setMessage(
-        "Your cart is empty. Add products before checking out."
+        "Your cart is empty or its products are no longer available."
+      );
+      return;
+    }
+
+    if (orderItems.length !== cart.length) {
+      setMessage(
+        "Some products are unavailable. Please review your cart before continuing."
       );
       return;
     }
@@ -159,6 +234,41 @@ export default function CheckoutPage() {
         return;
       }
 
+      // Recheck product availability and stock.
+      const productIds = orderItems.map((item) => item.id);
+
+      const { data: currentProducts, error: stockError } =
+        await supabase
+          .from("products")
+          .select("id, name, price, stock, active")
+          .in("id", productIds);
+
+      if (stockError) throw stockError;
+
+      for (const item of orderItems) {
+        const currentProduct = (currentProducts || []).find(
+          (product) => String(product.id) === item.id
+        );
+
+        if (!currentProduct || !currentProduct.active) {
+          throw new Error(
+            `${item.name} is no longer available. Please review your cart.`
+          );
+        }
+
+        if (Number(currentProduct.stock) < item.quantity) {
+          throw new Error(
+            `Only ${currentProduct.stock} unit(s) of ${item.name} are currently available.`
+          );
+        }
+
+        if (Number(currentProduct.price) !== item.price) {
+          throw new Error(
+            `The price of ${item.name} has changed. Please refresh checkout.`
+          );
+        }
+      }
+
       const orderNumber = `TM-${Date.now()}`;
 
       const { data: order, error: orderError } =
@@ -184,15 +294,13 @@ export default function CheckoutPage() {
           .select("id")
           .single();
 
-      if (orderError) {
-        throw orderError;
-      }
+      if (orderError) throw orderError;
 
       orderId = order.id;
 
       const itemsToSave = orderItems.map((item) => ({
         order_id: order.id,
-        product_id: String(item.id),
+        product_id: item.id,
         product_name: item.name,
         unit_price: item.price,
         quantity: item.quantity,
@@ -203,21 +311,16 @@ export default function CheckoutPage() {
         .from("order_items")
         .insert(itemsToSave);
 
-      if (itemsError) {
-        throw itemsError;
-      }
+      if (itemsError) throw itemsError;
 
       const { error: cartError } = await supabase
         .from("cart_items")
         .delete()
         .eq("user_id", user.id);
 
-      if (cartError) {
-        throw cartError;
-      }
+      if (cartError) throw cartError;
 
       setCart([]);
-
       router.push(`/order-confirmation/${order.id}`);
     } catch (error) {
       console.error("Order creation error:", error);
@@ -234,7 +337,9 @@ export default function CheckoutPage() {
       }
 
       setMessage(
-        "We could not complete your order. Your cart has been retained where possible. Please try again."
+        error instanceof Error
+          ? error.message
+          : "We could not complete your order. Please try again."
       );
     } finally {
       setChecking(false);
@@ -297,6 +402,12 @@ export default function CheckoutPage() {
               Add some products to your cart before checking out.
             </p>
 
+            {message && (
+              <p className="mx-auto mt-4 max-w-lg text-sm text-amber-800">
+                {message}
+              </p>
+            )}
+
             <Link
               href="/"
               className="mt-6 inline-flex items-center gap-2 rounded-lg bg-green-700 px-6 py-3 font-semibold text-white hover:bg-green-800"
@@ -309,7 +420,8 @@ export default function CheckoutPage() {
           <form onSubmit={handleCheckout}>
             <div className="grid gap-8 lg:grid-cols-[1.5fr_1fr]">
               <div className="space-y-7">
-                                <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
+              
+                <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7">
                   <div className="mb-6 flex items-center gap-3">
                     <div className="rounded-xl bg-green-50 p-3 text-green-700">
                       <Landmark size={22} />
@@ -319,7 +431,6 @@ export default function CheckoutPage() {
                       <h2 className="text-lg font-bold text-gray-900">
                         Delivery information
                       </h2>
-
                       <p className="text-sm text-gray-500">
                         Where should we deliver your order?
                       </p>
@@ -331,7 +442,6 @@ export default function CheckoutPage() {
                       <label className="mb-2 block text-sm font-semibold text-gray-700">
                         Full name
                       </label>
-
                       <input
                         value={customerName}
                         onChange={(event) =>
@@ -347,7 +457,6 @@ export default function CheckoutPage() {
                       <label className="mb-2 block text-sm font-semibold text-gray-700">
                         Email address
                       </label>
-
                       <input
                         type="email"
                         value={userEmail}
@@ -360,7 +469,6 @@ export default function CheckoutPage() {
                       <label className="mb-2 block text-sm font-semibold text-gray-700">
                         Phone number
                       </label>
-
                       <input
                         type="tel"
                         value={phone}
@@ -377,7 +485,6 @@ export default function CheckoutPage() {
                       <label className="mb-2 block text-sm font-semibold text-gray-700">
                         Delivery address
                       </label>
-
                       <textarea
                         value={address}
                         onChange={(event) =>
@@ -394,7 +501,6 @@ export default function CheckoutPage() {
                       <label className="mb-2 block text-sm font-semibold text-gray-700">
                         City
                       </label>
-
                       <input
                         value={city}
                         onChange={(event) =>
@@ -410,7 +516,6 @@ export default function CheckoutPage() {
                       <label className="mb-2 block text-sm font-semibold text-gray-700">
                         State
                       </label>
-
                       <input
                         value={state}
                         onChange={(event) =>
@@ -429,7 +534,6 @@ export default function CheckoutPage() {
                     <h2 className="text-lg font-bold text-gray-900">
                       Payment provider
                     </h2>
-
                     <p className="mt-1 text-sm text-gray-500">
                       Select a provider for this checkout demonstration.
                     </p>
@@ -449,7 +553,6 @@ export default function CheckoutPage() {
                         <span className="font-bold text-gray-900">
                           Paystack
                         </span>
-
                         {provider === "paystack" && (
                           <CheckCircle2
                             className="text-green-700"
@@ -457,7 +560,6 @@ export default function CheckoutPage() {
                           />
                         )}
                       </div>
-
                       <p className="mt-2 text-xs text-gray-500">
                         Future payment integration option.
                       </p>
@@ -476,7 +578,6 @@ export default function CheckoutPage() {
                         <span className="font-bold text-gray-900">
                           Flutterwave
                         </span>
-
                         {provider === "flutterwave" && (
                           <CheckCircle2
                             className="text-green-700"
@@ -484,7 +585,6 @@ export default function CheckoutPage() {
                           />
                         )}
                       </div>
-
                       <p className="mt-2 text-xs text-gray-500">
                         Future payment integration option.
                       </p>
@@ -495,7 +595,6 @@ export default function CheckoutPage() {
                     <h3 className="font-bold text-gray-900">
                       Payment method
                     </h3>
-
                     <p className="mt-1 text-sm text-gray-500">
                       Choose a method for this simulated transaction.
                     </p>
@@ -511,60 +610,40 @@ export default function CheckoutPage() {
                           : "border-gray-200"
                       }`}
                     >
-                      <CreditCard
-                        className="text-green-700"
-                        size={23}
-                      />
-
+                      <CreditCard className="text-green-700" size={23} />
                       <div className="flex-1">
                         <p className="font-semibold text-gray-900">
                           Debit or credit card
                         </p>
-
                         <p className="text-xs text-gray-500">
                           Card payment simulation
                         </p>
                       </div>
-
                       {paymentMethod === "card" && (
-                        <CheckCircle2
-                          className="text-green-700"
-                          size={20}
-                        />
+                        <CheckCircle2 className="text-green-700" size={20} />
                       )}
                     </button>
 
                     <button
                       type="button"
-                      onClick={() =>
-                        setPaymentMethod("bank_transfer")
-                      }
+                      onClick={() => setPaymentMethod("bank_transfer")}
                       className={`flex w-full items-center gap-4 rounded-xl border-2 p-4 text-left ${
                         paymentMethod === "bank_transfer"
                           ? "border-green-700 bg-green-50"
                           : "border-gray-200"
                       }`}
                     >
-                      <Landmark
-                        className="text-green-700"
-                        size={23}
-                      />
-
+                      <Landmark className="text-green-700" size={23} />
                       <div className="flex-1">
                         <p className="font-semibold text-gray-900">
                           Bank transfer
                         </p>
-
                         <p className="text-xs text-gray-500">
                           Bank transfer simulation
                         </p>
                       </div>
-
                       {paymentMethod === "bank_transfer" && (
-                        <CheckCircle2
-                          className="text-green-700"
-                          size={20}
-                        />
+                        <CheckCircle2 className="text-green-700" size={20} />
                       )}
                     </button>
 
@@ -577,26 +656,15 @@ export default function CheckoutPage() {
                           : "border-gray-200"
                       }`}
                     >
-                      <Smartphone
-                        className="text-green-700"
-                        size={23}
-                      />
-
+                      <Smartphone className="text-green-700" size={23} />
                       <div className="flex-1">
-                        <p className="font-semibold text-gray-900">
-                          USSD
-                        </p>
-
+                        <p className="font-semibold text-gray-900">USSD</p>
                         <p className="text-xs text-gray-500">
                           USSD payment simulation
                         </p>
                       </div>
-
                       {paymentMethod === "ussd" && (
-                        <CheckCircle2
-                          className="text-green-700"
-                          size={20}
-                        />
+                        <CheckCircle2 className="text-green-700" size={20} />
                       )}
                     </button>
                   </div>
@@ -612,7 +680,6 @@ export default function CheckoutPage() {
                       className="mt-0.5 shrink-0"
                       size={20}
                     />
-
                     <p>
                       Payment provider options are displayed for demonstration
                       purposes only. Live payment processing has not been
@@ -621,7 +688,8 @@ export default function CheckoutPage() {
                   </div>
                 </section>
               </div>
-                            <aside className="h-fit rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7 lg:sticky lg:top-6">
+
+              <aside className="h-fit rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-7 lg:sticky lg:top-6">
                 <h2 className="mb-6 text-lg font-bold text-gray-900">
                   Order summary
                 </h2>
@@ -636,12 +704,10 @@ export default function CheckoutPage() {
                         <p className="font-semibold text-gray-900">
                           {item.name}
                         </p>
-
                         <p className="mt-1 text-sm text-gray-500">
                           Quantity: {item.quantity}
                         </p>
                       </div>
-
                       <p className="shrink-0 text-sm font-semibold text-gray-900">
                         {money(item.lineTotal)}
                       </p>
@@ -656,7 +722,6 @@ export default function CheckoutPage() {
                     <span>Subtotal</span>
                     <span>{money(subtotal)}</span>
                   </div>
-
                   <div className="flex justify-between text-gray-600">
                     <span>Delivery fee</span>
                     <span>{money(shipping)}</span>
@@ -669,15 +734,14 @@ export default function CheckoutPage() {
                   <span className="text-base font-bold text-gray-900">
                     Total
                   </span>
-
                   <span className="text-2xl font-bold text-green-700">
                     {money(total)}
                   </span>
                 </div>
 
                 <p className="mt-3 text-xs text-gray-500">
-                  Delivery fee is an initial estimate and may be
-                  adjusted when delivery arrangements are confirmed.
+                  Delivery fee is an initial estimate and may be adjusted
+                  when delivery arrangements are confirmed.
                 </p>
 
                 {message && (
@@ -688,15 +752,12 @@ export default function CheckoutPage() {
 
                 <button
                   type="submit"
-                  disabled={checking}
+                  disabled={checking || orderItems.length !== cart.length}
                   className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-green-700 px-5 py-4 font-bold text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {checking ? (
                     <>
-                      <Loader2
-                        className="animate-spin"
-                        size={18}
-                      />
+                      <Loader2 className="animate-spin" size={18} />
                       Processing demo order...
                     </>
                   ) : (
@@ -719,4 +780,4 @@ export default function CheckoutPage() {
     </main>
   );
 }
-                
+  
