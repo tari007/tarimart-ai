@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from "next/image";
@@ -19,26 +20,32 @@ import {
 } from "lucide-react";
 
 import {
-  products,
   categories,
   money,
+  type Product,
 } from "../data/products";
+
 import { supabase } from "../lib/supabase";
 
 type CartItem = {
-  productId: number;
+  productId: string;
   quantity: number;
 };
 
 export default function Home() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [wishlist, setWishlist] = useState<number[]>([]);
+  const [wishlist, setWishlist] = useState<string[]>([]);
   const [sort, setSort] = useState("featured");
+
   const [showCart, setShowCart] = useState(false);
   const [showWishlist, setShowWishlist] = useState(false);
   const [showAI, setShowAI] = useState(false);
+
   const [aiMessage, setAiMessage] = useState("");
   const [toast, setToast] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
@@ -47,6 +54,56 @@ export default function Home() {
     setToast(message);
     window.setTimeout(() => setToast(""), 2200);
   };
+
+  // Load active products from Supabase.
+  useEffect(() => {
+    let active = true;
+
+    async function loadProducts() {
+      try {
+        const { data, error } = await supabase
+          .from("products")
+          .select(
+            "id, name, description, price, category, image, stock, rating, featured, active"
+          )
+          .eq("active", true)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        if (!active) return;
+
+        const loadedProducts: Product[] = (data || []).map(
+          (item) => ({
+            id: String(item.id),
+            name: item.name,
+            description: item.description || "",
+            price: Number(item.price),
+            category: item.category,
+            image: item.image || "/placeholder.png",
+            stock: Number(item.stock),
+            rating: Number(item.rating ?? 5),
+            featured: Boolean(item.featured),
+            active: Boolean(item.active),
+            tag: item.featured ? "Featured" : undefined,
+          })
+        );
+
+        setProducts(loadedProducts);
+      } catch (error) {
+        console.error("Could not load products:", error);
+        notify("Could not load products. Please refresh the page.");
+      } finally {
+        if (active) setProductsLoading(false);
+      }
+    }
+
+    void loadProducts();
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Load the signed-in customer's cart from Supabase.
   useEffect(() => {
@@ -67,15 +124,10 @@ export default function Home() {
 
       const savedCart: CartItem[] = (data || [])
         .map((item) => ({
-          productId: Number(item.product_id),
+          productId: String(item.product_id),
           quantity: Number(item.quantity),
         }))
-        .filter(
-          (item) =>
-            Number.isInteger(item.productId) &&
-            item.quantity > 0 &&
-            products.some((product) => product.id === item.productId)
-        );
+        .filter((item) => item.quantity > 0);
 
       setCart(savedCart);
     };
@@ -119,6 +171,7 @@ export default function Home() {
     };
   }, []);
 
+  // Search, filter and sort products.
   const filteredProducts = useMemo(() => {
     let result = products.filter((product) => {
       const matchesSearch =
@@ -143,8 +196,14 @@ export default function Home() {
       result = [...result].sort((a, b) => b.rating - a.rating);
     }
 
+    if (sort === "featured") {
+      result = [...result].sort(
+        (a, b) => Number(b.featured) - Number(a.featured)
+      );
+    }
+
     return result;
-  }, [search, category, sort]);
+  }, [products, search, category, sort]);
 
   const cartProducts = cart
     .map((item) => {
@@ -171,9 +230,9 @@ export default function Home() {
     (total, product) => total + product.price * product.quantity,
     0
   );
-
+  
   // Add a product and save the updated quantity.
-  const addToCart = async (id: number) => {
+  const addToCart = async (id: string) => {
     const product = products.find((item) => item.id === id);
 
     if (!product) return;
@@ -202,28 +261,28 @@ export default function Home() {
       return [...current, { productId: id, quantity: 1 }];
     });
 
-    if (userId) {
-      const { error } = await supabase
-        .from("cart_items")
-        .upsert(
-          {
-            user_id: userId,
-            product_id: String(id),
-            quantity: newQuantity,
-            updated_at: new Date().toISOString(),
-          },
-          {
-            onConflict: "user_id,product_id",
-          }
-        );
-
-      if (error) {
-        console.error("Could not save cart item:", error.message);
-        notify("Cart updated on this device, but saving failed.");
-        return;
-      }
-    } else {
+    if (!userId) {
       notify("Added to cart. Sign in to save your cart.");
+      return;
+    }
+
+    const { error } = await supabase
+      .from("cart_items")
+      .upsert(
+        {
+          user_id: userId,
+          product_id: id,
+          quantity: newQuantity,
+          updated_at: new Date().toISOString(),
+        },
+        {
+          onConflict: "user_id,product_id",
+        }
+      );
+
+    if (error) {
+      console.error("Could not save cart item:", error.message);
+      notify("Cart updated on this device, but saving failed.");
       return;
     }
 
@@ -232,7 +291,7 @@ export default function Home() {
 
   // Increase or decrease a product quantity.
   const changeCartQuantity = async (
-    id: number,
+    id: string,
     change: number
   ) => {
     const currentItem = cart.find((item) => item.productId === id);
@@ -264,7 +323,7 @@ export default function Home() {
         .from("cart_items")
         .delete()
         .eq("user_id", userId)
-        .eq("product_id", String(id));
+        .eq("product_id", id);
 
       if (error) {
         console.error("Could not remove cart item:", error.message);
@@ -281,7 +340,7 @@ export default function Home() {
         updated_at: new Date().toISOString(),
       })
       .eq("user_id", userId)
-      .eq("product_id", String(id));
+      .eq("product_id", id);
 
     if (error) {
       console.error("Could not update cart quantity:", error.message);
@@ -289,7 +348,7 @@ export default function Home() {
     }
   };
 
-  const toggleWishlist = (id: number) => {
+  const toggleWishlist = (id: string) => {
     const exists = wishlist.includes(id);
 
     setWishlist((current) =>
@@ -301,13 +360,12 @@ export default function Home() {
     notify(exists ? "Removed from wishlist" : "Added to wishlist!");
   };
 
-  const removeFromCart = (id: number) => {
+  const removeFromCart = (id: string) => {
     void changeCartQuantity(id, -1);
   };
 
   return (
     <>
-      
       <header className="site-header">
         <div className="header-inner">
           <a href="#" className="brand">
@@ -465,7 +523,9 @@ export default function Home() {
             </div>
 
             <span className="product-count">
-              {filteredProducts.length} products
+              {productsLoading
+                ? "Loading..."
+                : `${filteredProducts.length} products`}
             </span>
           </div>
 
@@ -511,7 +571,11 @@ export default function Home() {
             )}
           </div>
 
-          {filteredProducts.length === 0 ? (
+          {productsLoading ? (
+            <div className="empty-state">
+              <p>Loading products from TariMart...</p>
+            </div>
+          ) : filteredProducts.length === 0 ? (
             <div className="empty-state">
               <Search size={32} />
               <h3>No products found</h3>
@@ -587,10 +651,11 @@ export default function Home() {
                       <button
                         className="add-button"
                         onClick={() => void addToCart(product.id)}
+                        disabled={product.stock < 1}
                         aria-label={`Add ${product.name} to cart`}
                       >
                         <ShoppingBag size={17} />
-                        Add
+                        {product.stock < 1 ? "Out of stock" : "Add"}
                       </button>
                     </div>
                   </div>
@@ -599,7 +664,7 @@ export default function Home() {
             </div>
           )}
         </section>
-        
+
         <section className="trust-strip">
           <div className="trust-item">
             <Truck size={25} />
@@ -720,10 +785,7 @@ export default function Home() {
               <>
                 <div className="modal-items">
                   {cartProducts.map((product) => (
-                    <div
-                      className="cart-item"
-                      key={product.id}
-                    >
+                    <div className="cart-item" key={product.id}>
                       <Image
                         src={product.image}
                         alt={product.name}
@@ -738,9 +800,7 @@ export default function Home() {
                         <div className="wishlist-item-actions">
                           <button
                             className="remove-button"
-                            onClick={() =>
-                              removeFromCart(product.id)
-                            }
+                            onClick={() => removeFromCart(product.id)}
                             aria-label={`Decrease ${product.name} quantity`}
                           >
                             <Minus size={14} />
@@ -792,15 +852,15 @@ export default function Home() {
                 </p>
 
                 <button
-  className="primary-button checkout-button"
-  onClick={() => {
-    setShowCart(false);
-    window.location.href = "/checkout";
-  }}
->
-  Continue to checkout
-  <ArrowRight size={17} />
-</button>
+                  className="primary-button checkout-button"
+                  onClick={() => {
+                    setShowCart(false);
+                    window.location.href = "/checkout";
+                  }}
+                >
+                  Continue to checkout
+                  <ArrowRight size={17} />
+                </button>
               </>
             )}
           </div>
@@ -978,5 +1038,3 @@ export default function Home() {
   );
 }
 
-
-      
