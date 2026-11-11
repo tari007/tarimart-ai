@@ -45,7 +45,10 @@ type OrderItem = {
 export default function OrderConfirmationPage() {
   const params = useParams();
   const router = useRouter();
-  const orderId = params.id as string;
+
+  const orderId = Array.isArray(params.id)
+    ? params.id[0]
+    : params.id;
 
   const [order, setOrder] = useState<Order | null>(null);
   const [items, setItems] = useState<OrderItem[]>([]);
@@ -53,6 +56,8 @@ export default function OrderConfirmationPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
+
     async function loadOrder() {
       try {
         const {
@@ -73,31 +78,50 @@ export default function OrderConfirmationPage() {
             .eq("user_id", user.id)
             .single();
 
-        if (orderError) throw orderError;
+        if (orderError) {
+          throw orderError;
+        }
 
         const { data: itemData, error: itemError } =
           await supabase
             .from("order_items")
             .select("*")
-            .eq("order_id", orderId);
+            .eq("order_id", orderId)
+            .order("created_at", { ascending: true });
 
-        if (itemError) throw itemError;
+        if (itemError) {
+          throw itemError;
+        }
 
-        setOrder(orderData);
-        setItems(itemData ?? []);
+        if (!cancelled) {
+          setOrder(orderData as Order);
+          setItems((itemData ?? []) as OrderItem[]);
+        }
       } catch (err) {
         console.error("Order confirmation error:", err);
-        setError(
-          "We could not find this order. Please check your order history."
-        );
+
+        if (!cancelled) {
+          setError(
+            "We could not find this order. Please check your order history."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     if (orderId) {
       loadOrder();
+    } else {
+      setError("Invalid order reference.");
+      setLoading(false);
     }
+
+    return () => {
+      cancelled = true;
+    };
   }, [orderId, router]);
 
   if (loading) {
@@ -115,8 +139,7 @@ export default function OrderConfirmationPage() {
       </main>
     );
   }
-
-  if (error || !order) {
+    if (error || !order) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
         <div className="max-w-md rounded-2xl bg-white p-8 text-center shadow-sm">
@@ -124,12 +147,15 @@ export default function OrderConfirmationPage() {
             size={42}
             className="mx-auto mb-4 text-gray-400"
           />
+
           <h1 className="text-xl font-bold text-gray-900">
             Order not found
           </h1>
+
           <p className="mt-3 text-sm text-gray-600">
-            {error}
+            {error || "This order could not be found."}
           </p>
+
           <Link
             href="/"
             className="mt-6 inline-flex items-center gap-2 rounded-lg bg-green-700 px-5 py-3 font-semibold text-white"
@@ -141,6 +167,8 @@ export default function OrderConfirmationPage() {
       </main>
     );
   }
+
+  const isDemoPayment = order.payment_status === "demo_paid";
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 py-10 sm:px-6">
@@ -162,23 +190,26 @@ export default function OrderConfirmationPage() {
           </h1>
 
           <p className="mx-auto mt-3 max-w-lg text-gray-600">
-            Thank you, {order.customer_name}. Your demo order
-            has been recorded successfully.
+            Thank you, {order.customer_name}. Your order has
+            been recorded successfully.
           </p>
 
           <div className="mt-7 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-            <strong>DEMO PAYMENT:</strong> This transaction
-            was simulated for demonstration purposes.
-            No real payment was processed or collected.
+            <strong>DEMO PAYMENT:</strong>{" "}
+            {isDemoPayment
+              ? "This transaction was simulated for demonstration purposes. No real payment was processed or collected."
+              : "This is a demonstration checkout. No real payment was processed or collected."}
           </div>
 
           <div className="mt-7 rounded-xl bg-gray-50 p-5">
             <p className="text-sm text-gray-500">
               Order number
             </p>
+
             <p className="mt-1 text-xl font-bold text-gray-900">
               {order.order_number}
             </p>
+
             <p className="mt-2 text-xs text-gray-500">
               {new Date(order.created_at).toLocaleString()}
             </p>
@@ -189,6 +220,7 @@ export default function OrderConfirmationPage() {
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <div className="mb-4 flex items-center gap-3">
               <MapPin className="text-green-700" size={22} />
+
               <h2 className="font-bold text-gray-900">
                 Delivery details
               </h2>
@@ -197,12 +229,15 @@ export default function OrderConfirmationPage() {
             <p className="font-semibold text-gray-900">
               {order.customer_name}
             </p>
+
             <p className="mt-1 text-sm text-gray-600">
               {order.phone}
             </p>
+
             <p className="mt-1 text-sm text-gray-600">
               {order.customer_email}
             </p>
+
             <p className="mt-3 text-sm text-gray-600">
               {order.delivery_address}
               <br />
@@ -213,6 +248,7 @@ export default function OrderConfirmationPage() {
           <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
             <div className="mb-4 flex items-center gap-3">
               <CreditCard className="text-green-700" size={22} />
+
               <h2 className="font-bold text-gray-900">
                 Payment summary
               </h2>
@@ -221,6 +257,7 @@ export default function OrderConfirmationPage() {
             <p className="text-sm text-gray-500">
               Provider
             </p>
+
             <p className="font-semibold capitalize text-gray-900">
               {order.payment_provider}
             </p>
@@ -228,61 +265,77 @@ export default function OrderConfirmationPage() {
             <p className="mt-3 text-sm text-gray-500">
               Method
             </p>
+
             <p className="font-semibold capitalize text-gray-900">
-              {order.payment_method.replace("_", " ")}
+              {order.payment_method.replace(/_/g, " ")}
             </p>
 
             <p className="mt-3 text-sm text-gray-500">
               Payment status
             </p>
+
             <p className="font-semibold text-green-700">
-              Demo payment successful
+              {isDemoPayment
+                ? "Demo payment successful"
+                : order.payment_status.replace(/_/g, " ")}
             </p>
           </section>
         </div>
-
-        <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+                <section className="mt-6 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <h2 className="mb-5 text-lg font-bold text-gray-900">
             Items ordered
           </h2>
 
-          <div className="space-y-4">
-            {items.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between gap-4 border-b border-gray-100 pb-4 last:border-0 last:pb-0"
-              >
-                <div>
+          {items.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              No items were found for this order.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-4 border-b border-gray-100 pb-4 last:border-0 last:pb-0"
+                >
+                  <div>
+                    <p className="font-semibold text-gray-900">
+                      {item.product_name}
+                    </p>
+
+                    <p className="mt-1 text-sm text-gray-500">
+                      {money(Number(item.unit_price))} ×{" "}
+                      {item.quantity}
+                    </p>
+                  </div>
+
                   <p className="font-semibold text-gray-900">
-                    {item.product_name}
-                  </p>
-                  <p className="mt-1 text-sm text-gray-500">
-                    {money(item.unit_price)} × {item.quantity}
+                    {money(Number(item.line_total))}
                   </p>
                 </div>
-
-                <p className="font-semibold text-gray-900">
-                  {money(item.line_total)}
-                </p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
           <div className="mt-5 border-t border-gray-200 pt-5">
             <div className="flex justify-between text-sm text-gray-600">
               <span>Subtotal</span>
-              <span>{money(Number(order.subtotal))}</span>
+              <span>
+                {money(Number(order.subtotal))}
+              </span>
             </div>
 
             <div className="mt-3 flex justify-between text-sm text-gray-600">
               <span>Delivery fee</span>
-              <span>{money(Number(order.shipping_fee))}</span>
+              <span>
+                {money(Number(order.shipping_fee))}
+              </span>
             </div>
 
             <div className="mt-5 flex justify-between border-t border-gray-200 pt-5">
               <span className="font-bold text-gray-900">
                 Total
               </span>
+
               <span className="text-xl font-bold text-green-700">
                 {money(Number(order.total))}
               </span>
@@ -311,3 +364,4 @@ export default function OrderConfirmationPage() {
     </main>
   );
 }
+        
