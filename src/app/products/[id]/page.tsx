@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -14,21 +14,210 @@ import {
   Star,
   Truck,
 } from "lucide-react";
-import { useParams } from "next/navigation";
-import { products, money } from "../../../data/products";
+import { useParams, useRouter } from "next/navigation";
+
+import { money, type Product } from "../../../data/products";
+import { supabase } from "../../../lib/supabase";
 
 export default function ProductDetailPage() {
   const params = useParams();
-  const productId = Number(params.id);
+  const router = useRouter();
 
-  const product = useMemo(
-    () => products.find((item) => item.id === productId),
-    [productId]
-  );
+  const productId = Array.isArray(params.id)
+    ? params.id[0]
+    : params.id;
 
+  const [product, setProduct] = useState<Product | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const [wishlisted, setWishlisted] = useState(false);
+  const [message, setMessage] = useState("");
+  const [addingToCart, setAddingToCart] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadProduct() {
+      if (!productId) {
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      const { data, error } = await supabase
+        .from("products")
+        .select(
+          "id, name, description, price, category, image, stock, rating, featured, active"
+        )
+        .eq("id", productId)
+        .eq("active", true)
+        .single();
+
+      if (!active) return;
+
+      if (error || !data) {
+        console.error("Could not load product:", error);
+        setProduct(null);
+        setLoading(false);
+        return;
+      }
+
+      const loadedProduct: Product = {
+        id: String(data.id),
+        name: data.name,
+        description: data.description || "",
+        price: Number(data.price),
+        category: data.category,
+        image: data.image || "/placeholder.png",
+        stock: Number(data.stock),
+        rating: Number(data.rating ?? 5),
+        featured: Boolean(data.featured),
+        active: Boolean(data.active),
+        tag: data.featured ? "Featured" : undefined,
+      };
+
+      setProduct(loadedProduct);
+
+      const { data: relatedData, error: relatedError } =
+        await supabase
+          .from("products")
+          .select(
+            "id, name, description, price, category, image, stock, rating, featured, active"
+          )
+          .eq("active", true)
+          .eq("category", loadedProduct.category)
+          .neq("id", loadedProduct.id)
+          .limit(4);
+
+      if (!active) return;
+
+      if (relatedError) {
+        console.error("Could not load related products:", relatedError);
+      } else {
+        const loadedRelated: Product[] = (relatedData || []).map(
+          (item) => ({
+            id: String(item.id),
+            name: item.name,
+            description: item.description || "",
+            price: Number(item.price),
+            category: item.category,
+            image: item.image || "/placeholder.png",
+            stock: Number(item.stock),
+            rating: Number(item.rating ?? 5),
+            featured: Boolean(item.featured),
+            active: Boolean(item.active),
+            tag: item.featured ? "Featured" : undefined,
+          })
+        );
+
+        setRelatedProducts(loadedRelated);
+      }
+
+      setLoading(false);
+    }
+
+    void loadProduct();
+
+    return () => {
+      active = false;
+    };
+  }, [productId]);
+
+  const increaseQuantity = () => {
+    if (!product) return;
+
+    setQuantity((current) =>
+      Math.min(current + 1, product.stock)
+    );
+  };
+
+  const decreaseQuantity = () => {
+    setQuantity((current) => Math.max(1, current - 1));
+  };
+
+  const handleAddToCart = async () => {
+    if (!product || addingToCart) return;
+
+    setMessage("");
+    setAddingToCart(true);
+
+    try {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        setMessage("Please log in to add products to your cart.");
+        setAddingToCart(false);
+        router.push("/login");
+        return;
+      }
+
+      const { data: existingItem, error: lookupError } =
+        await supabase
+          .from("cart_items")
+          .select("id, quantity")
+          .eq("user_id", user.id)
+          .eq("product_id", product.id)
+          .maybeSingle();
+
+      if (lookupError) throw lookupError;
+
+      const newQuantity =
+        Number(existingItem?.quantity || 0) + quantity;
+
+      if (newQuantity > product.stock) {
+        setMessage(
+          `Only ${product.stock} units are currently available.`
+        );
+        setAddingToCart(false);
+        return;
+      }
+
+      const { error: saveError } = await supabase
+        .from("cart_items")
+        .upsert(
+          {
+            user_id: user.id,
+            product_id: product.id,
+            quantity: newQuantity,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: "user_id,product_id",
+          }
+        );
+
+      if (saveError) throw saveError;
+
+      setAdded(true);
+      setMessage(`${quantity} item(s) added to your cart.`);
+
+      window.setTimeout(() => {
+        setAdded(false);
+        setMessage("");
+      }, 2500);
+    } catch (error) {
+      console.error("Could not add product to cart:", error);
+      setMessage("Could not add this product. Please try again.");
+    } finally {
+      setAddingToCart(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gray-50 px-6">
+        <p className="text-lg font-semibold text-gray-600">
+          Loading product...
+        </p>
+      </main>
+    );
+  }
 
   if (!product) {
     return (
@@ -49,43 +238,7 @@ export default function ProductDetailPage() {
     );
   }
 
-  const relatedProducts = products
-    .filter(
-      (item) =>
-        item.category === product.category && item.id !== product.id
-    )
-    .slice(0, 4);
-
-  const increaseQuantity = () => {
-    setQuantity((current) =>
-      Math.min(current + 1, product.stock)
-    );
-  };
-
-  const decreaseQuantity = () => {
-    setQuantity((current) => Math.max(1, current - 1));
-  };
-
-  const handleAddToCart = () => {
-    const existingCart = JSON.parse(
-      localStorage.getItem("tarimart-cart") || "[]"
-    );
-
-    const updatedCart = [...existingCart];
-
-    for (let index = 0; index < quantity; index++) {
-      updatedCart.push(product.id);
-    }
-
-    localStorage.setItem(
-      "tarimart-cart",
-      JSON.stringify(updatedCart)
-    );
-
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2500);
-  };
-    return (
+  return (
     <main className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <Link
@@ -146,7 +299,9 @@ export default function ProductDetailPage() {
             <div className="mt-6 flex items-center gap-2 text-sm">
               <span
                 className={`h-2.5 w-2.5 rounded-full ${
-                  product.stock > 0 ? "bg-emerald-500" : "bg-red-500"
+                  product.stock > 0
+                    ? "bg-emerald-500"
+                    : "bg-red-500"
                 }`}
               />
               <span className="font-medium text-gray-700">
@@ -186,11 +341,11 @@ export default function ProductDetailPage() {
               <button
                 type="button"
                 onClick={handleAddToCart}
-                disabled={product.stock < 1}
+                disabled={product.stock < 1 || addingToCart}
                 className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-6 py-3.5 font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <ShoppingBag size={19} />
-                Add to Cart
+                {addingToCart ? "Adding..." : "Add to Cart"}
               </button>
 
               <button
@@ -210,9 +365,15 @@ export default function ProductDetailPage() {
               </button>
             </div>
 
-            {added && (
-              <p className="mt-4 rounded-xl bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">
-                Added {quantity} item(s) to your cart.
+            {(added || message) && (
+              <p
+                className={`mt-4 rounded-xl p-3 text-sm font-semibold ${
+                  added
+                    ? "bg-emerald-50 text-emerald-800"
+                    : "bg-amber-50 text-amber-800"
+                }`}
+              >
+                {message}
               </p>
             )}
 
@@ -235,7 +396,8 @@ export default function ProductDetailPage() {
             </div>
           </div>
         </div>
-                {relatedProducts.length > 0 && (
+
+        {relatedProducts.length > 0 && (
           <section className="mt-16">
             <div className="mb-6 flex items-end justify-between">
               <div>
@@ -293,4 +455,3 @@ export default function ProductDetailPage() {
     </main>
   );
 }
-      
