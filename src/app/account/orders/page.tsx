@@ -31,6 +31,8 @@ export default function OrdersPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    let cancelled = false;
+
     async function loadOrders() {
       try {
         const {
@@ -51,21 +53,35 @@ export default function OrdersPage() {
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
 
-        if (ordersError) throw ordersError;
+        if (ordersError) {
+          throw ordersError;
+        }
 
-        setOrders(data ?? []);
+        if (!cancelled) {
+          setOrders((data ?? []) as Order[]);
+        }
       } catch (err) {
         console.error("Order history error:", err);
-        setError("We could not load your orders. Please try again.");
+
+        if (!cancelled) {
+          setError(
+            "We could not load your orders. Please try again."
+          );
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     loadOrders();
-  }, [router]);
 
-  function statusStyle(status: string) {
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+    function statusStyle(status: string) {
     switch (status.toLowerCase()) {
       case "delivered":
       case "demo_paid":
@@ -80,9 +96,16 @@ export default function OrdersPage() {
       case "processing":
         return "bg-blue-100 text-blue-800";
 
+      case "refunded":
+        return "bg-purple-100 text-purple-800";
+
       default:
         return "bg-amber-100 text-amber-800";
     }
+  }
+
+  function formatStatus(status: string) {
+    return status.replace(/_/g, " ");
   }
 
   if (loading) {
@@ -93,6 +116,7 @@ export default function OrdersPage() {
             size={34}
             className="mx-auto mb-3 animate-spin text-green-700"
           />
+
           <p className="text-sm text-gray-600">
             Loading your orders...
           </p>
@@ -131,8 +155,7 @@ export default function OrdersPage() {
             {error}
           </div>
         )}
-
-        {orders.length === 0 ? (
+                {orders.length === 0 && !error ? (
           <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-sm">
             <ShoppingBag
               size={44}
@@ -144,7 +167,7 @@ export default function OrdersPage() {
             </h2>
 
             <p className="mt-2 text-sm text-gray-500">
-              Your completed orders will appear here.
+              Your orders will appear here after checkout.
             </p>
 
             <Link
@@ -184,7 +207,7 @@ export default function OrdersPage() {
                         order.order_status
                       )}`}
                     >
-                      {order.order_status.replace("_", " ")}
+                      {formatStatus(order.order_status)}
                     </span>
 
                     <span
@@ -194,7 +217,7 @@ export default function OrdersPage() {
                     >
                       {order.payment_status === "demo_paid"
                         ? "Demo payment"
-                        : order.payment_status.replace("_", " ")}
+                        : formatStatus(order.payment_status)}
                     </span>
                   </div>
                 </div>
@@ -227,3 +250,5 @@ export default function OrdersPage() {
     </main>
   );
 }
+        
+  
